@@ -1,27 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_drop_menu/drop_menu_cell.dart';
 
 class DropMenu extends StatefulWidget {
   final GlobalKey sourceWidgetKey;
+  final IndexPath selectedIndexPath;
   final int numberOfSections;
   final String Function(int) textOfSection;
-  final List<String> Function(int) subtextsAtSection;
+  final List<String> Function(int) rowsOfSection;
 
-  DropMenu(this.sourceWidgetKey, this.numberOfSections, this.textOfSection,
-      this.subtextsAtSection);
+  DropMenu(
+      {@required this.sourceWidgetKey,
+      this.selectedIndexPath,
+      @required this.numberOfSections,
+      @required this.textOfSection,
+      @required this.rowsOfSection});
 
   @override
   _DropMenuState createState() => _DropMenuState();
 }
 
 class _DropMenuState extends State<DropMenu> with TickerProviderStateMixin {
-  Map<int, bool> _isSectionExpandedMap = {};
+
+  IndexPath _selectedIndexPath;
+
   Map<int, AnimationController> _animationControllerMap = {};
   ScrollController _scrollController = ScrollController();
   AnimationController _animationController;
 
   initState() {
     super.initState();
+
+    _selectedIndexPath = widget.selectedIndexPath ?? IndexPath(section: null, row: null);
+
     _animationController =
         AnimationController(duration: Duration(milliseconds: 200), vsync: this);
     _animationController.forward();
@@ -57,7 +68,9 @@ class _DropMenuState extends State<DropMenu> with TickerProviderStateMixin {
         child: _listView(),
       ),
       onTap: () {
-        Navigator.pop(context);
+        _animationController.reverse().then((value) {
+          Navigator.pop(context);
+        });
       },
     );
   }
@@ -71,46 +84,35 @@ class _DropMenuState extends State<DropMenu> with TickerProviderStateMixin {
               heightFactor: _animationController.value,
               child: ListView.builder(
                 itemBuilder: (ctx, section) {
-                  print(section);
-                  bool isSectionExpanded =
-                      _isSectionExpandedMap[section] ?? false;
-                  List<Widget> children = [];
-                  if (isSectionExpanded) {
-                    children.addAll(widget.subtextsAtSection(section).map(
-                        (e) => _defaultCell(e, EdgeInsets.only(left: 30))));
-                  }
-                  return Column(
-                    children: [
-                      _defaultCell(
-                          widget.textOfSection(section), EdgeInsets.zero,
-                          callBack: () {
-                        _isSectionExpandedMap[section] = !isSectionExpanded;
-                        if (_isSectionExpandedMap[section]) {
-                          _animateControllerAtSection(section).forward();
-                          setState(() {});
-                        } else {
-                          _animateControllerAtSection(section)
-                              .reverse()
-                              .then((value) {
-                            setState(() {});
-                          });
-                        }
-                      }),
-                      AnimatedBuilder(
-                        animation: _animateControllerAtSection(section),
-                        builder: (ctx, _) {
-                          return ClipRect(
-                            child: Align(
-                              heightFactor:
-                                  _animateControllerAtSection(section).value,
-                              child: Column(
-                                children: children,
-                              ),
-                            ),
-                          );
-                        },
-                      )
-                    ],
+                  return DropMenuCell(
+                    text: widget.textOfSection(section),
+                    rows: widget.rowsOfSection(section),
+                    isSelected: section == _selectedIndexPath.section,
+                    selectedRow: section == _selectedIndexPath.section ? _selectedIndexPath.row : null,
+                    controller: _animationControllerAtSection(section),
+                    didSelectSection: () {
+                      if (_selectedIndexPath.section == null) {
+                        _selectedIndexPath.section = section;
+                      } else if (_selectedIndexPath.section != section) {
+                        AnimationController pre =
+                        _animationControllerAtSection(_selectedIndexPath.section);
+                        pre.reverse();
+                        _selectedIndexPath.section = section;
+                        _selectedIndexPath.row = null;
+                        setState(() {});
+                      }
+                      if (widget.rowsOfSection(section).length == 0) {
+                        _animationController.reverse().then((value) {
+                          Navigator.pop(context, _selectedIndexPath);
+                        });
+                      }
+                    },
+                    didSelectRow: (row) {
+                      _selectedIndexPath.row = row;
+                      _animationController.reverse().then((value) {
+                        Navigator.pop(context, _selectedIndexPath);
+                      });
+                    },
                   );
                 },
                 itemCount: widget.numberOfSections,
@@ -122,29 +124,12 @@ class _DropMenuState extends State<DropMenu> with TickerProviderStateMixin {
         });
   }
 
-  _defaultCell(String text, EdgeInsets margin, {Function callBack}) {
-    return GestureDetector(
-      child: Container(
-        constraints: BoxConstraints.expand(height: 50),
-        decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: Colors.grey)),
-            color: Colors.white),
-        child: Text(text),
-        alignment: Alignment.centerLeft,
-        padding: margin,
-      ),
-      onTap: () {
-        callBack?.call();
-      },
-    );
-  }
-
-  AnimationController _animateControllerAtSection(int section) {
+  AnimationController _animationControllerAtSection(int section) {
     AnimationController animationController = _animationControllerMap[section];
     if (animationController == null) {
       animationController = AnimationController(
-          duration: Duration(milliseconds: 100), vsync: this);
-      animationController.reverseDuration = Duration(milliseconds: 100);
+          duration: Duration(milliseconds: 200), vsync: this);
+      animationController.reverseDuration = Duration(milliseconds: 200);
       _animationControllerMap[section] = animationController;
     }
     return animationController;
@@ -154,6 +139,9 @@ class _DropMenuState extends State<DropMenu> with TickerProviderStateMixin {
   void dispose() {
     // TODO: implement dispose
     _animationController.dispose();
+    _animationControllerMap.forEach((key, value) {
+      value.dispose();
+    });
     super.dispose();
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_drop_menu/drop_menu.dart';
+import 'package:flutter_drop_menu/drop_menu_cell.dart';
 
 void main() {
   runApp(MyApp());
@@ -21,8 +22,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  IndexPath _indexPath;
   List<GlobalKey> keys = [];
-
   @override
   void initState() {
     // TODO: implement initState
@@ -47,11 +48,19 @@ class _MyHomePageState extends State<MyHomePage> {
                       opaque: false,
                       pageBuilder: (context, animation, secondaryAnimation) {
                         return DropMenu(
-                            keys[index],
-                            5,
-                            (section) => '分组$section',
-                            (_) => ['a', 'b', 'c', 'd', 'e', 'f', 'g']);
-                      }));
+                          sourceWidgetKey: keys[index],
+                          selectedIndexPath: _indexPath,
+                          numberOfSections: 5,
+                          textOfSection: (section) => '分组$section',
+                          rowsOfSection: (section) =>
+                              ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+                        );
+                      })).then((value) {
+                if (value == null) {
+                  return;
+                }
+                _indexPath = value;
+              });
             },
             child: Container(
               key: keys[index],
