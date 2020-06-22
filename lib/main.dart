@@ -42,6 +42,22 @@ class _MyHomePageState extends State<MyHomePage> {
         itemBuilder: (ctx, index) {
           return GestureDetector(
             onTap: () {
+              DropMenu.present(
+                context: context,
+                sourceWidgetKey: keys[index],
+                selectedIndexPath: _indexPath,
+                numberOfSections: 5,
+                textOfSection: (section) =>
+                    section == 0 ? '0组无子sub-items' : '分组$section',
+                rowsOfSection: (section) =>
+                    section == 0 ? [] : ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+              ).then((value) {
+                if (value == null) {
+                  return;
+                }
+                _indexPath = value;
+              });
+              return;
               Navigator.push(
                   context,
                   PageRouteBuilder(
@@ -51,9 +67,11 @@ class _MyHomePageState extends State<MyHomePage> {
                           sourceWidgetKey: keys[index],
                           selectedIndexPath: _indexPath,
                           numberOfSections: 5,
-                          textOfSection: (section) => '分组$section',
-                          rowsOfSection: (section) =>
-                              ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+                          textOfSection: (section) =>
+                              section == 0 ? '0组无子sub-items' : '分组$section',
+                          rowsOfSection: (section) => section == 0
+                              ? []
+                              : ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
                         );
                       })).then((value) {
                 if (value == null) {

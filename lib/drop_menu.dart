@@ -16,12 +16,29 @@ class DropMenu extends StatefulWidget {
       @required this.textOfSection,
       @required this.rowsOfSection});
 
+  static Future<IndexPath> present(
+      {@required BuildContext context,
+      GlobalKey sourceWidgetKey,
+      IndexPath selectedIndexPath,
+      int numberOfSections,
+      String Function(int) textOfSection,
+      List<String> Function(int) rowsOfSection}) {
+    return Navigator.of(context).push(PageRouteBuilder(
+        pageBuilder: (ctx, animation, secondaryAnimation) => DropMenu(
+              sourceWidgetKey: sourceWidgetKey,
+              selectedIndexPath: selectedIndexPath,
+              numberOfSections: numberOfSections,
+              textOfSection: textOfSection,
+              rowsOfSection: rowsOfSection,
+            ),
+        opaque: false));
+  }
+
   @override
   _DropMenuState createState() => _DropMenuState();
 }
 
 class _DropMenuState extends State<DropMenu> with TickerProviderStateMixin {
-
   IndexPath _selectedIndexPath;
 
   Map<int, AnimationController> _animationControllerMap = {};
@@ -31,7 +48,7 @@ class _DropMenuState extends State<DropMenu> with TickerProviderStateMixin {
   initState() {
     super.initState();
 
-    _selectedIndexPath = widget.selectedIndexPath ?? IndexPath(section: null, row: null);
+    _selectedIndexPath = IndexPath(section: widget.selectedIndexPath?.section, row: widget.selectedIndexPath?.row);
 
     _animationController =
         AnimationController(duration: Duration(milliseconds: 200), vsync: this);
@@ -88,14 +105,16 @@ class _DropMenuState extends State<DropMenu> with TickerProviderStateMixin {
                     text: widget.textOfSection(section),
                     rows: widget.rowsOfSection(section),
                     isSelected: section == _selectedIndexPath.section,
-                    selectedRow: section == _selectedIndexPath.section ? _selectedIndexPath.row : null,
+                    selectedRow: section == _selectedIndexPath.section
+                        ? _selectedIndexPath.row
+                        : null,
                     controller: _animationControllerAtSection(section),
                     didSelectSection: () {
                       if (_selectedIndexPath.section == null) {
                         _selectedIndexPath.section = section;
                       } else if (_selectedIndexPath.section != section) {
-                        AnimationController pre =
-                        _animationControllerAtSection(_selectedIndexPath.section);
+                        AnimationController pre = _animationControllerAtSection(
+                            _selectedIndexPath.section);
                         pre.reverse();
                         _selectedIndexPath.section = section;
                         _selectedIndexPath.row = null;
@@ -110,7 +129,7 @@ class _DropMenuState extends State<DropMenu> with TickerProviderStateMixin {
                     didSelectRow: (row) {
                       _selectedIndexPath.row = row;
                       _animationController.reverse().then((value) {
-                        Navigator.pop(context, _selectedIndexPath);
+                        Navigator.pop(context, _selectedIndexPath.row == null ? null : _selectedIndexPath);
                       });
                     },
                   );

@@ -63,7 +63,7 @@ class _DropMenuCellState extends State<DropMenuCell> {
               widget.text,
               style: TextStyle(color: tintColor),
             ),
-            RotationTransition(
+            if (widget.rows.length != 0) RotationTransition(
               child: Icon(
                 Icons.keyboard_arrow_down,
                 color: tintColor,
