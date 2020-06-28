@@ -4,163 +4,121 @@ import 'package:flutter_drop_menu/drop_menu_cell.dart';
 
 class DropMenu extends StatefulWidget {
   final GlobalKey sourceWidgetKey;
-  final IndexPath selectedIndexPath;
+  final int selectedSection;
+  final int selectedRow;
   final int numberOfSections;
-  final String Function(int) textOfSection;
-  final List<String> Function(int) rowsOfSection;
+  final String Function(int) headerOfSection;
+  final int Function(int) numberOfRowsInSection;
+  final String Function(int, int) rowOfIndexPath;
+  final Function(int, int) didSelectIndexPath;
 
-  DropMenu(
-      {@required this.sourceWidgetKey,
-      this.selectedIndexPath,
-      @required this.numberOfSections,
-      @required this.textOfSection,
-      @required this.rowsOfSection});
-
-  static Future<IndexPath> present(
-      {@required BuildContext context,
-      GlobalKey sourceWidgetKey,
-      IndexPath selectedIndexPath,
-      int numberOfSections,
-      String Function(int) textOfSection,
-      List<String> Function(int) rowsOfSection}) {
-    return Navigator.of(context).push(PageRouteBuilder(
-        pageBuilder: (ctx, animation, secondaryAnimation) => DropMenu(
-              sourceWidgetKey: sourceWidgetKey,
-              selectedIndexPath: selectedIndexPath,
-              numberOfSections: numberOfSections,
-              textOfSection: textOfSection,
-              rowsOfSection: rowsOfSection,
-            ),
-        opaque: false));
-  }
+  DropMenu(this.sourceWidgetKey, this.selectedSection, this.selectedRow, this.numberOfSections, this.headerOfSection,
+      this.numberOfRowsInSection, this.rowOfIndexPath, this.didSelectIndexPath);
 
   @override
   _DropMenuState createState() => _DropMenuState();
 }
 
 class _DropMenuState extends State<DropMenu> with TickerProviderStateMixin {
-  IndexPath _selectedIndexPath;
-
-  Map<int, AnimationController> _animationControllerMap = {};
-  ScrollController _scrollController = ScrollController();
   AnimationController _animationController;
-
-  initState() {
+  int _selectedSection;
+  int _selectedRow;
+  int _expandedSection;
+  @override
+  void initState() {
+    // TODO: implement initState
     super.initState();
-
-    _selectedIndexPath = IndexPath(section: widget.selectedIndexPath?.section, row: widget.selectedIndexPath?.row);
-
+    _selectedSection = widget.selectedSection;
+    _selectedRow = widget.selectedRow;
     _animationController =
-        AnimationController(duration: Duration(milliseconds: 200), vsync: this);
+        AnimationController(vsync: this, duration: Duration(milliseconds: 200));
     _animationController.forward();
-
-    _scrollController.addListener(() {
-      if (_scrollController.offset < 0) {
-        _scrollController.jumpTo(0);
-      }
-    });
   }
 
-  double get y {
-    RenderBox sourceWidget =
-        widget.sourceWidgetKey.currentContext.findRenderObject();
-    Offset offset =
-        sourceWidget.localToGlobal(Offset(0, sourceWidget.size.height));
-    return offset.dy;
+  @override
+  void didUpdateWidget(DropMenu oldWidget) {
+    // TODO: implement didUpdateWidget
+    super.didUpdateWidget(oldWidget);
+    _selectedSection = widget.selectedSection;
+    _selectedRow = widget.selectedRow;
+    _expandedSection = null;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: _body(),
-    );
-  }
-
-  _body() {
-    return GestureDetector(
-      child: Container(
-        margin: EdgeInsets.only(top: y),
-        color: Color(0x0f000000),
-        child: _listView(),
+    RenderBox renderBox =
+        widget.sourceWidgetKey.currentContext.findRenderObject();
+    double y = renderBox.localToGlobal(Offset(0, renderBox.size.height)).dy;
+    return Padding(
+      padding: EdgeInsets.only(top: y),
+      child: Center(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            color: Colors.black45,
+            alignment: Alignment.topLeft,
+            child: _listView(),
+          ),
+          onTap: () {
+            _animationController.reverse().then((value) => widget.didSelectIndexPath(null, null));
+          },
+        ),
       ),
-      onTap: () {
-        _animationController.reverse().then((value) {
-          Navigator.pop(context);
-        });
-      },
     );
   }
 
   _listView() {
     return AnimatedBuilder(
-        animation: _animationController.view,
-        builder: (ctx, child) {
-          return ClipRect(
-            child: Align(
-              heightFactor: _animationController.value,
-              child: ListView.builder(
-                itemBuilder: (ctx, section) {
-                  return DropMenuCell(
-                    text: widget.textOfSection(section),
-                    rows: widget.rowsOfSection(section),
-                    isSelected: section == _selectedIndexPath.section,
-                    selectedRow: section == _selectedIndexPath.section
-                        ? _selectedIndexPath.row
-                        : null,
-                    controller: _animationControllerAtSection(section),
-                    didSelectSection: () {
-                      if (_selectedIndexPath.section == null) {
-                        _selectedIndexPath.section = section;
-                      } else if (_selectedIndexPath.section != section) {
-                        AnimationController pre = _animationControllerAtSection(
-                            _selectedIndexPath.section);
-                        pre.reverse();
-                        _selectedIndexPath.section = section;
-                        _selectedIndexPath.row = null;
-                        setState(() {});
-                      }
-                      if (widget.rowsOfSection(section).length == 0) {
-                        _animationController.reverse().then((value) {
-                          Navigator.pop(context, _selectedIndexPath);
-                        });
-                      }
-                    },
-                    didSelectRow: (row) {
-                      _selectedIndexPath.row = row;
-                      _animationController.reverse().then((value) {
-                        Navigator.pop(context, _selectedIndexPath.row == null ? null : _selectedIndexPath);
-                      });
-                    },
-                  );
-                },
-                itemCount: widget.numberOfSections,
-                padding: EdgeInsets.zero,
-                controller: _scrollController,
-              ),
+      animation: _animationController,
+      builder: (ctx, _) {
+        return ClipRect(
+          child: Align(
+            heightFactor: _animationController.value,
+            child: ListView.builder(
+              itemBuilder: (ctx, section) {
+                return DropMenuCell(
+                  sectionHeader: widget.headerOfSection(section),
+                  isExpanded: _expandedSection == section,
+                  isHighlight: section == _selectedSection,
+                  selectedRow: _selectedRow,
+                  numberOfRows: widget.numberOfRowsInSection(section),
+                  textOfRow: (row) => widget
+                      .rowOfIndexPath(section, row),
+                  didSelectAt: (row) {
+                    bool finished = false;
+                    if (row == null) {
+                      _expandedSection =
+                          _expandedSection == section ? null : section;
+                      if (widget.numberOfRowsInSection(section) == 0)
+                        finished = true;
+                      if (section != _selectedSection)
+                        _selectedRow = null;
+                    } else {
+                      _selectedRow = row;
+                      finished = true;
+                    }
+                    _selectedSection = section;
+                    setState(() {});
+                    if (finished) {
+                      _animationController.reverse().then((value) => widget.didSelectIndexPath(_selectedSection, _selectedRow));
+                    }
+                  },
+                );
+              },
+              itemCount: widget.numberOfSections,
+              padding: EdgeInsets.zero,
             ),
-          );
-        });
+          ),
+        );
+      },
+    );
   }
 
-  AnimationController _animationControllerAtSection(int section) {
-    AnimationController animationController = _animationControllerMap[section];
-    if (animationController == null) {
-      animationController = AnimationController(
-          duration: Duration(milliseconds: 200), vsync: this);
-      animationController.reverseDuration = Duration(milliseconds: 200);
-      _animationControllerMap[section] = animationController;
-    }
-    return animationController;
-  }
 
   @override
   void dispose() {
     // TODO: implement dispose
-    _animationController.dispose();
-    _animationControllerMap.forEach((key, value) {
-      value.dispose();
-    });
     super.dispose();
+    _animationController.dispose();
   }
 }

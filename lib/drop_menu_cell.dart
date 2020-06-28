@@ -1,45 +1,48 @@
 import 'package:flutter/material.dart';
 
 class DropMenuCell extends StatefulWidget {
-  final String text;
-  final List<String> rows;
-  final AnimationController controller;
+  final String sectionHeader;
+  final bool isExpanded;
+  final bool isHighlight;
   final int selectedRow;
-  final bool isSelected;
-  final Function didSelectSection;
-  final Function(int) didSelectRow;
+  final int numberOfRows;
+  final String Function(int) textOfRow;
+  final Function(int) didSelectAt;
 
   DropMenuCell(
-      {@required this.text,
-      @required this.rows,
-      @required this.controller,
+      {this.sectionHeader,
+      this.isExpanded = false,
+      this.isHighlight = false,
       this.selectedRow,
-      this.isSelected = false,
-      this.didSelectSection,
-      this.didSelectRow});
-
-  @override
+      this.numberOfRows = 0,
+      this.textOfRow,
+      this.didSelectAt});
   _DropMenuCellState createState() => _DropMenuCellState();
 }
 
-class _DropMenuCellState extends State<DropMenuCell> {
-  bool _isSelected = false;
-  int _selectedRow;
+class _DropMenuCellState extends State<DropMenuCell>
+    with SingleTickerProviderStateMixin {
+  AnimationController _animationController;
   Animation<double> _rotationAnimation;
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    _rotationAnimation = widget.controller.drive(Tween(begin: 0, end: 0.5));
+    _animationController =
+        AnimationController(vsync: this, duration: Duration(milliseconds: 100));
+    _animationController.reverseDuration = Duration(milliseconds: 100);
+    _rotationAnimation = _animationController.drive(Tween(begin: 0, end: 0.5));
   }
 
   @override
   void didUpdateWidget(DropMenuCell oldWidget) {
     // TODO: implement didUpdateWidget
     super.didUpdateWidget(oldWidget);
-    _isSelected = widget.isSelected;
-    _selectedRow = widget.selectedRow;
+
+    widget.isExpanded
+        ? _animationController.forward()
+        : _animationController.reverse();
   }
 
   @override
@@ -54,60 +57,52 @@ class _DropMenuCellState extends State<DropMenuCell> {
 
   /// section
   _sectionHeader() {
-    Color tintColor = _isSelected ? Colors.blue : Color(0xff333333);
+    Color tintColor = widget.isHighlight ? Colors.blue : Color(0xff333333);
     return _sliver(
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
             Text(
-              widget.text,
+              widget.sectionHeader,
               style: TextStyle(color: tintColor),
             ),
-            if (widget.rows.length != 0) RotationTransition(
-              child: Icon(
-                Icons.keyboard_arrow_down,
-                color: tintColor,
-              ),
-              turns: _rotationAnimation,
-            )
+            if (widget.numberOfRows != 0)
+              RotationTransition(
+                child: Icon(
+                  Icons.keyboard_arrow_down,
+                  color: tintColor,
+                ),
+                turns: _rotationAnimation,
+              )
           ],
         ),
         EdgeInsets.symmetric(horizontal: 15), callBack: () {
-      if (!_isSelected) {
-        _isSelected = true;
-        setState(() {});
-        widget.didSelectSection?.call();
-      }
-      if (widget.controller.status == AnimationStatus.forward ||
-          widget.controller.status == AnimationStatus.completed) {
-        widget.controller.reverse();
-      } else {
-        widget.controller.forward();
-      }
+          widget.didSelectAt?.call(null);
     });
   }
 
   /// rows
   _rowsOfSection() {
     List<Widget> rows = [];
-    for (int row = 0; row < widget.rows.length; row++) {
-      Color tintColor = _selectedRow == row ? Colors.blue : Color(0xff333333);
+    for (int row = 0; row < widget.numberOfRows; row++) {
       rows.add(_sliver(
           Text(
-            widget.rows[row],
-            style: TextStyle(color: tintColor),
+            widget.textOfRow(row),
+            style: TextStyle(
+                color: widget.selectedRow == row && widget.isHighlight
+                    ? Colors.blue
+                    : Color(0xff333333)),
           ),
           EdgeInsets.symmetric(horizontal: 50), callBack: () {
-        _selectedRow = row;
-        widget.didSelectRow?.call(row);
+            widget.didSelectAt?.call(row);
       }));
     }
     return AnimatedBuilder(
-      animation: widget.controller,
+      animation: _animationController,
       builder: (ctx, _) {
         return ClipRect(
             child: Align(
-          heightFactor: widget.controller.value,
+          heightFactor: _animationController.value,
           child: Column(
             children: rows,
           ),
@@ -133,11 +128,12 @@ class _DropMenuCellState extends State<DropMenuCell> {
       },
     );
   }
-}
 
-class IndexPath {
-  var section;
-  var row;
 
-  IndexPath({this.section, this.row});
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+    _animationController.dispose();
+  }
 }
