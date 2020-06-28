@@ -118,7 +118,7 @@ class _DropMenuState extends State<DropMenu> with TickerProviderStateMixin {
   @override
   void dispose() {
     // TODO: implement dispose
-    super.dispose();
     _animationController.dispose();
+    super.dispose();
   }
 }

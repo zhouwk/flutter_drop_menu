@@ -133,7 +133,7 @@ class _DropMenuCellState extends State<DropMenuCell>
   @override
   void dispose() {
     // TODO: implement dispose
-    super.dispose();
     _animationController.dispose();
+    super.dispose();
   }
 }

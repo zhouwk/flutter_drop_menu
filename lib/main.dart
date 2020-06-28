@@ -79,7 +79,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 _selectedRowA,
                 3,
                     (section) => 'section$section'  ,
-                    (int) => 5,
+                    (section) => section == 0 ? 0 : 5,
                     (section, row) => '分组$row', (section, row) {
               if (section != null) {
                 _selectedSectionA = section;
@@ -93,7 +93,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 _selectedRowB,
                 5,
                     (section) => 'section$section'  ,
-                    (int) => 3,
+                    (section) => section == 0 ? 0 : 5,
                     (section, row) => '分组$row', (section, row) {
               if (section != null) {
                 _selectedSectionB = section;
@@ -126,8 +126,12 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               behavior: HitTestBehavior.opaque,
               onTap: () {
-                _showMenu = true;
-                flag = true;
+                if (_showMenu == true && flag) {
+                  _showMenu = false;
+                } else {
+                  _showMenu = true;
+                  flag = true;
+                }
                 setState(() {
 
                 });
@@ -142,8 +146,12 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               behavior: HitTestBehavior.opaque,
               onTap: () {
-                _showMenu = true;
-                flag = false;
+                if (_showMenu == true && flag == false) {
+                  _showMenu = false;
+                } else {
+                  _showMenu = true;
+                  flag = false;
+                }
                 setState(() {
 
                 });
