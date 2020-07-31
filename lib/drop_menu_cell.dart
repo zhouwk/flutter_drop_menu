@@ -30,8 +30,7 @@ class _DropMenuCellState extends State<DropMenuCell>
     // TODO: implement initState
     super.initState();
     _animationController =
-        AnimationController(vsync: this, duration: Duration(milliseconds: 100));
-    _animationController.reverseDuration = Duration(milliseconds: 100);
+        AnimationController(vsync: this, duration: Duration(milliseconds: 150));
     _rotationAnimation = _animationController.drive(Tween(begin: 0, end: 0.5));
   }
 
